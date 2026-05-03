@@ -190,7 +190,7 @@ st.markdown("""
         background: #1a1a2e !important;
         color: white !important;
     }
-    /* Force sidebar radio labels to white - multiple selectors */
+    /* Force sidebar radio labels to white */
     [data-testid="stSidebar"] div[role="radiogroup"] label,
     [data-testid="stSidebar"] .stRadio label,
     [data-testid="stSidebar"] .stRadio label span,
@@ -453,9 +453,10 @@ elif page == _("nav_report"):
         )
         st.success("Report generated! Check your downloads folder.")
 
-# ---------- FOOTER ----------
-st.markdown(f"""
+# ---------- FOOTER (fixed to avoid TypeError) ----------
+footer_html = f"""
 <div class="footer">
     <p>© {datetime.now().year} – {_('built_by')}</p>
 </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(footer_html, unsafe_allow_html=True)
