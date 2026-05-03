@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 import io
+import json
 import plotly.graph_objects as go
 
 # ---------- PAGE CONFIG ----------
@@ -45,6 +46,7 @@ text = {
         "nav_scan": "🔍 Full System Scan",
         "nav_maintenance": "🛠️ Maintenance Reminders",
         "nav_report": "📥 Download Report",
+        "nav_api": "📡 API Integration",
         "sidebar_contact": "📞 Contact Us",
         "sidebar_email": "✉️ deslandes78@gmail.com",
         "sidebar_phone": "📱 (509)-47385663",
@@ -78,6 +80,12 @@ text = {
         "report_generate": "Generate & Download Report",
         "report_btn": "📥 Download CSV Report",
         "globe_alt": "GlobalInternet.py Logo",
+        "api_title": "📡 API Integration – Ingest Device Logs",
+        "api_instructions": "Paste device logs in JSON format (list of devices with status, signal_strength, latency) to analyze issues.",
+        "api_example": "Example JSON",
+        "api_input": "Device Logs (JSON)",
+        "api_analyze": "Analyze Logs",
+        "api_results": "Analysis Results",
     },
     "fr": {
         "login_title": "🔐 Connexion au système",
@@ -91,6 +99,7 @@ text = {
         "nav_scan": "🔍 Analyse complète",
         "nav_maintenance": "🛠️ Rappels de maintenance",
         "nav_report": "📥 Télécharger rapport",
+        "nav_api": "📡 Intégration API",
         "sidebar_contact": "📞 Contactez‑nous",
         "sidebar_email": "✉️ deslandes78@gmail.com",
         "sidebar_phone": "📱 (509)-47385663",
@@ -124,6 +133,12 @@ text = {
         "report_generate": "Générer et télécharger",
         "report_btn": "📥 Télécharger CSV",
         "globe_alt": "Logo GlobalInternet.py",
+        "api_title": "📡 Intégration API – Ingérer des journaux d'appareils",
+        "api_instructions": "Collez les journaux d'appareils au format JSON (liste d'appareils avec statut, signal_strength, latence) pour analyser les problèmes.",
+        "api_example": "Exemple JSON",
+        "api_input": "Journaux d'appareils (JSON)",
+        "api_analyze": "Analyser les journaux",
+        "api_results": "Résultats d'analyse",
     },
     "es": {
         "login_title": "🔐 Inicio de sesión",
@@ -137,6 +152,7 @@ text = {
         "nav_scan": "🔍 Análisis completo",
         "nav_maintenance": "🛠️ Recordatorios de mantenimiento",
         "nav_report": "📥 Descargar informe",
+        "nav_api": "📡 Integración API",
         "sidebar_contact": "📞 Contáctenos",
         "sidebar_email": "✉️ deslandes78@gmail.com",
         "sidebar_phone": "📱 (509)-47385663",
@@ -170,6 +186,12 @@ text = {
         "report_generate": "Generar y descargar",
         "report_btn": "📥 Descargar CSV",
         "globe_alt": "Logo GlobalInternet.py",
+        "api_title": "📡 Integración API – Ingerir registros de dispositivos",
+        "api_instructions": "Pegue los registros de dispositivos en formato JSON (lista de dispositivos con estado, signal_strength, latencia) para analizar problemas.",
+        "api_example": "Ejemplo JSON",
+        "api_input": "Registros de dispositivos (JSON)",
+        "api_analyze": "Analizar registros",
+        "api_results": "Resultados del análisis",
     }
 }
 
@@ -183,14 +205,13 @@ if not st.session_state.maintenance_log:
         {"device": "Security Camera (Front Door)", "last_maintenance": datetime.now().strftime("%Y-%m-%d"), "interval_days": 45, "next_due": (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d")},
     ]
 
-# ---------- CUSTOM CSS (DARK THEME + ROTATING SYMBOL + WHITE RADIO TEXT) ----------
+# ---------- CUSTOM CSS ----------
 st.markdown("""
 <style>
     .stApp, [data-testid="stSidebar"] {
         background: #1a1a2e !important;
         color: white !important;
     }
-    /* Force sidebar radio labels to white */
     [data-testid="stSidebar"] div[role="radiogroup"] label,
     [data-testid="stSidebar"] .stRadio label,
     [data-testid="stSidebar"] .stRadio label span,
@@ -198,7 +219,6 @@ st.markdown("""
     [data-testid="stSidebar"] .stRadio div[role="radio"] span {
         color: white !important;
     }
-    /* Ensure all sidebar text is white */
     [data-testid="stSidebar"] .stMarkdown, 
     [data-testid="stSidebar"] label,
     [data-testid="stSidebar"] .stSelectbox label {
@@ -242,7 +262,6 @@ st.markdown("""
         text-align: center;
         border: 1px solid #00ffcc;
     }
-    /* Rotating electronic symbol */
     .rotating-symbol {
         font-size: 120px;
         display: block;
@@ -253,14 +272,12 @@ st.markdown("""
     @keyframes spin {
         100% { transform: rotate(360deg); }
     }
-    /* Globe logo in sidebar */
     .sidebar-globe {
         text-align: center;
         font-size: 3rem;
         margin-bottom: 1rem;
         animation: spin 8s linear infinite;
     }
-    /* Input fields */
     .stTextInput input, .stNumberInput input, .stSelectbox div {
         background-color: #0f3460 !important;
         color: white !important;
@@ -288,7 +305,7 @@ st.session_state.lang = lang_options[selected_lang]
 
 page = st.sidebar.radio(
     "Navigation",
-    [t("nav_dashboard"), t("nav_scan"), t("nav_maintenance"), t("nav_report")],
+    [t("nav_dashboard"), t("nav_scan"), t("nav_maintenance"), t("nav_report"), t("nav_api")],
     label_visibility="hidden"
 )
 
@@ -314,6 +331,38 @@ st.sidebar.markdown("---")
 st.sidebar.markdown(f"*{t('built_by')}*")
 
 # Helper functions
+def analyze_device_logs(devices_list):
+    """Analyze a list of device logs (dict) and return a DataFrame with issues and fixes."""
+    results = []
+    for device in devices_list:
+        name = device.get("name", "Unknown Device")
+        status = device.get("status", "Unknown")
+        signal = device.get("signal_strength")
+        latency = device.get("latency")
+        issues = []
+        fix = ""
+        if signal is not None and signal < 60:
+            issues.append("Weak signal (below 60%)")
+            fix = "Move device closer to router or add a Wi‑Fi extender."
+        if latency is not None and latency > 80:
+            issues.append("High latency (>80 ms)")
+            fix = "Check for interference, reduce network congestion, or restart router."
+        if status == "Offline":
+            issues.append("Device offline")
+            fix = "Check power connection, restart device, or verify network settings."
+        if not issues:
+            issues.append("No issues")
+            fix = "No action needed."
+        results.append({
+            "Device": name,
+            "Status": status,
+            "Signal Strength (%)": signal if signal is not None else "",
+            "Latency (ms)": latency if latency is not None else "",
+            "Issues": ", ".join(issues),
+            "Fix Instruction": fix
+        })
+    return pd.DataFrame(results)
+
 def simulate_scan():
     results = []
     for device, info in st.session_state.devices.items():
@@ -331,7 +380,6 @@ def simulate_scan():
         if not issues:
             issues.append("No issues")
             fix = "No action needed."
-        # Replace None with None (so that PyArrow doesn't complain)
         latency_val = info["latency"] if info["latency"] is not None else None
         results.append({
             "Device": device,
@@ -351,7 +399,6 @@ if page == t("nav_dashboard"):
     st.subheader("📡 Current Device Status")
     df_status = pd.DataFrame.from_dict(st.session_state.devices, orient="index").reset_index()
     df_status.rename(columns={"index": "Device"}, inplace=True)
-    # Convert None to something safe for display (but keep as None for PyArrow)
     st.dataframe(df_status[["Device", "status", "signal_strength", "latency", "last_check", "issues"]], use_container_width=True)
     
     col1, col2, col3 = st.columns(3)
@@ -455,7 +502,46 @@ elif page == t("nav_report"):
         )
         st.success("Report generated! Check your downloads folder.")
 
-# ---------- FOOTER (using t() function, no f-string conflict) ----------
+# ---------- API INTEGRATION PAGE ----------
+elif page == t("nav_api"):
+    st.markdown(f'<div class="main-header"><h1>{t("api_title")}</h1></div>', unsafe_allow_html=True)
+    st.markdown(t("api_instructions"))
+    
+    # Show example JSON
+    example_json = [
+        {"name": "Router (Living Room)", "status": "Connected", "signal_strength": 68, "latency": 45},
+        {"name": "Smart TV (Living Room)", "status": "Connected", "signal_strength": 72, "latency": 38},
+        {"name": "Security Camera (Front Door)", "status": "Connected", "signal_strength": 55, "latency": 89},
+        {"name": "Laptop (Home Office)", "status": "Connected", "signal_strength": 90, "latency": 22},
+        {"name": "Smart Plug (Kitchen)", "status": "Offline", "signal_strength": 0, "latency": None}
+    ]
+    st.code(json.dumps(example_json, indent=2), language="json")
+    
+    # Input area for JSON
+    json_input = st.text_area(t("api_input"), height=200, placeholder='[{"name": "Device1", "status": "Connected", "signal_strength": 45, "latency": 120}]')
+    
+    if st.button(t("api_analyze")):
+        try:
+            data = json.loads(json_input)
+            if isinstance(data, list):
+                df_analysis = analyze_device_logs(data)
+                st.subheader(t("api_results"))
+                st.dataframe(df_analysis, use_container_width=True)
+                # Show issues summary
+                issues_df = df_analysis[df_analysis["Issues"] != "No issues"]
+                if not issues_df.empty:
+                    st.warning("⚠️ Issues detected in the ingested logs!")
+                    for _, row in issues_df.iterrows():
+                        with st.expander(f"Fix for {row['Device']} – {row['Issues']}"):
+                            st.markdown(row['Fix Instruction'])
+                else:
+                    st.success("✅ All ingested devices are healthy!")
+            else:
+                st.error("JSON must contain a list of devices.")
+        except json.JSONDecodeError as e:
+            st.error(f"Invalid JSON: {e}")
+
+# ---------- FOOTER ----------
 footer_html = f"""
 <div class="footer">
     <p>© {datetime.now().year} – {t('built_by')}</p>
