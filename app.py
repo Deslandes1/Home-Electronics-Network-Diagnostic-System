@@ -19,11 +19,10 @@ if "authenticated" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
 if "maintenance_log" not in st.session_state:
-    st.session_state.maintenance_log = []  # list of dict: device, last_maintenance, next_due
+    st.session_state.maintenance_log = []
 if "scan_results" not in st.session_state:
     st.session_state.scan_results = None
 if "devices" not in st.session_state:
-    # Simulated devices in a typical home network
     st.session_state.devices = {
         "Router (Living Room)": {"status": "Connected", "signal_strength": 68, "latency": 45, "last_check": datetime.now().strftime("%Y-%m-%d %H:%M"), "issues": []},
         "Smart TV (Living Room)": {"status": "Connected", "signal_strength": 72, "latency": 38, "last_check": datetime.now().strftime("%Y-%m-%d %H:%M"), "issues": []},
@@ -184,11 +183,21 @@ if not st.session_state.maintenance_log:
         {"device": "Security Camera (Front Door)", "last_maintenance": datetime.now().strftime("%Y-%m-%d"), "interval_days": 45, "next_due": (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d")},
     ]
 
-# ---------- CUSTOM CSS (DARK THEME + ROTATING ELECTRONIC SYMBOL) ----------
+# ---------- CUSTOM CSS (DARK THEME + ROTATING SYMBOL + WHITE RADIO TEXT) ----------
 st.markdown("""
 <style>
     .stApp, [data-testid="stSidebar"] {
         background: #1a1a2e !important;
+        color: white !important;
+    }
+    /* Make sidebar radio button labels white */
+    [data-testid="stSidebar"] .stRadio label {
+        color: white !important;
+    }
+    /* Ensure all sidebar text is white */
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stSelectbox label {
         color: white !important;
     }
     .main-header {
@@ -247,13 +256,6 @@ st.markdown("""
         margin-bottom: 1rem;
         animation: spin 8s linear infinite;
     }
-    @keyframes spin {
-        100% { transform: rotate(360deg); }
-    }
-    /* Sidebar text color */
-    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label {
-        color: white !important;
-    }
     /* Input fields */
     .stTextInput input, .stNumberInput input, .stSelectbox div {
         background-color: #0f3460 !important;
@@ -276,12 +278,10 @@ if not st.session_state.authenticated:
     st.stop()
 
 # ---------- LOGGED IN – MAIN INTERFACE ----------
-# Language selector in sidebar
 lang_options = {"English": "en", "Français": "fr", "Español": "es"}
 selected_lang = st.sidebar.selectbox(_("language_selector"), list(lang_options.keys()))
 st.session_state.lang = lang_options[selected_lang]
 
-# Sidebar navigation
 page = st.sidebar.radio(
     "",
     [_("nav_dashboard"), _("nav_scan"), _("nav_maintenance"), _("nav_report")]
@@ -310,12 +310,10 @@ st.sidebar.markdown(f"*{_('built_by')}*")
 
 # Helper functions
 def simulate_scan():
-    """Simulate a real‑time scan of all devices and detect issues."""
     results = []
     for device, info in st.session_state.devices.items():
         issues = []
         fix = ""
-        # Simulated logic
         if info["signal_strength"] is not None and info["signal_strength"] < 60:
             issues.append("Weak signal (below 60%)")
             fix = "Move device closer to router or add a Wi‑Fi extender."
@@ -343,19 +341,18 @@ def simulate_scan():
 if page == _("nav_dashboard"):
     st.markdown(f'<div class="main-header"><div class="rotating-symbol">⚡⚙️🔧</div><h1>{_("dashboard_title")}</h1></div>', unsafe_allow_html=True)
     
-    # Display current device status
     st.subheader("📡 Current Device Status")
     df_status = pd.DataFrame.from_dict(st.session_state.devices, orient="index").reset_index()
     df_status.rename(columns={"index": "Device"}, inplace=True)
     st.dataframe(df_status[["Device", "status", "signal_strength", "latency", "last_check", "issues"]], use_container_width=True)
     
-    # Quick metrics
     col1, col2, col3 = st.columns(3)
     with col1:
         online_count = sum(1 for d in st.session_state.devices.values() if d["status"] == "Connected")
         st.metric("Devices Online", f"{online_count}/{len(st.session_state.devices)}")
     with col2:
-        avg_signal = sum(d["signal_strength"] for d in st.session_state.devices.values() if d["signal_strength"] is not None) / len([d for d in st.session_state.devices.values() if d["signal_strength"] is not None])
+        signals = [d["signal_strength"] for d in st.session_state.devices.values() if d["signal_strength"] is not None]
+        avg_signal = sum(signals) / len(signals) if signals else 0
         st.metric("Average Signal Strength", f"{avg_signal:.1f}%")
     with col3:
         issues_count = sum(1 for d in st.session_state.devices.values() if d["issues"])
@@ -366,14 +363,13 @@ elif page == _("nav_scan"):
     st.markdown(f'<div class="main-header"><h1>🔍 {_("nav_scan")}</h1></div>', unsafe_allow_html=True)
     if st.button(_("scan_btn")):
         with st.spinner(_("scanning")):
-            time.sleep(2)  # simulate scan delay
+            time.sleep(2)
             st.session_state.scan_results = simulate_scan()
         st.success("Scan complete!")
     
     if st.session_state.scan_results is not None:
         st.subheader("🔎 Scan Report")
         st.dataframe(st.session_state.scan_results, use_container_width=True)
-        # Highlight issues
         issues_df = st.session_state.scan_results[st.session_state.scan_results["Issues"] != "No issues"]
         if not issues_df.empty:
             st.warning("⚠️ Issues detected! See instructions above.")
@@ -387,7 +383,6 @@ elif page == _("nav_scan"):
 elif page == _("nav_maintenance"):
     st.markdown(f'<div class="main-header"><h1>🛠️ {_("nav_maintenance")}</h1></div>', unsafe_allow_html=True)
     
-    # Add new reminder
     with st.expander(_("add_reminder")):
         with st.form("add_reminder_form"):
             device_name = st.text_input(_("device_name"))
@@ -407,7 +402,6 @@ elif page == _("nav_maintenance"):
     if st.session_state.maintenance_log:
         df_reminders = pd.DataFrame(st.session_state.maintenance_log)
         st.dataframe(df_reminders[["device", "last_maintenance", "interval_days", "next_due"]], use_container_width=True)
-        # Highlight overdue or upcoming within 7 days
         today = datetime.now().date()
         for idx, row in df_reminders.iterrows():
             due_date = datetime.strptime(row["next_due"], "%Y-%m-%d").date()
@@ -424,7 +418,6 @@ elif page == _("nav_report"):
     st.write(_("report_title"))
     
     if st.button(_("report_btn")):
-        # Generate comprehensive report
         report_data = []
         for device, info in st.session_state.devices.items():
             report_data.append({
@@ -438,7 +431,6 @@ elif page == _("nav_report"):
             })
         df_report = pd.DataFrame(report_data)
         
-        # Add maintenance reminders
         if st.session_state.maintenance_log:
             df_rem = pd.DataFrame(st.session_state.maintenance_log)
             df_rem = df_rem.rename(columns={"device": "Device", "last_maintenance": "Last Maintenance", "next_due": "Next Maintenance Due"})
