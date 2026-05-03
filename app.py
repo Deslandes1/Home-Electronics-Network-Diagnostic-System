@@ -282,9 +282,11 @@ lang_options = {"English": "en", "Français": "fr", "Español": "es"}
 selected_lang = st.sidebar.selectbox(_("language_selector"), list(lang_options.keys()))
 st.session_state.lang = lang_options[selected_lang]
 
+# FIXED: radio now has a non-empty label (hidden)
 page = st.sidebar.radio(
-    "",
-    [_("nav_dashboard"), _("nav_scan"), _("nav_maintenance"), _("nav_report")]
+    "Navigation",
+    [_("nav_dashboard"), _("nav_scan"), _("nav_maintenance"), _("nav_report")],
+    label_visibility="hidden"
 )
 
 # ---------- SIDEBAR: GLOBE LOGO, CONTACT, PRICING ----------
@@ -301,7 +303,8 @@ st.sidebar.markdown(_("sidebar_full"))
 st.sidebar.caption(_("sidebar_note"))
 st.sidebar.markdown("---")
 
-if st.sidebar.button(_("logout_button"), use_container_width=True):
+# FIXED: replaced use_container_width with width='stretch'
+if st.sidebar.button(_("logout_button"), width='stretch'):
     st.session_state.authenticated = False
     st.rerun()
 
