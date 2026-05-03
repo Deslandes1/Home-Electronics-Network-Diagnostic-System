@@ -190,8 +190,12 @@ st.markdown("""
         background: #1a1a2e !important;
         color: white !important;
     }
-    /* Make sidebar radio button labels white */
-    [data-testid="stSidebar"] .stRadio label {
+    /* Force sidebar radio labels to white - multiple selectors */
+    [data-testid="stSidebar"] div[role="radiogroup"] label,
+    [data-testid="stSidebar"] .stRadio label,
+    [data-testid="stSidebar"] .stRadio label span,
+    [data-testid="stSidebar"] .stRadio label p,
+    [data-testid="stSidebar"] .stRadio div[role="radio"] span {
         color: white !important;
     }
     /* Ensure all sidebar text is white */
@@ -282,7 +286,7 @@ lang_options = {"English": "en", "Français": "fr", "Español": "es"}
 selected_lang = st.sidebar.selectbox(_("language_selector"), list(lang_options.keys()))
 st.session_state.lang = lang_options[selected_lang]
 
-# FIXED: radio now has a non-empty label (hidden)
+# Navigation radio with non-empty label (hidden)
 page = st.sidebar.radio(
     "Navigation",
     [_("nav_dashboard"), _("nav_scan"), _("nav_maintenance"), _("nav_report")],
@@ -303,7 +307,6 @@ st.sidebar.markdown(_("sidebar_full"))
 st.sidebar.caption(_("sidebar_note"))
 st.sidebar.markdown("---")
 
-# FIXED: replaced use_container_width with width='stretch'
 if st.sidebar.button(_("logout_button"), width='stretch'):
     st.session_state.authenticated = False
     st.rerun()
