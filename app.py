@@ -31,7 +31,7 @@ if "devices" not in st.session_state:
         "Smart Plug (Kitchen)": {"status": "Offline", "signal_strength": 0, "latency": None, "last_check": datetime.now().strftime("%Y-%m-%d %H:%M"), "issues": ["Device offline – check power"]},
     }
 
-# ---------- LANGUAGE DICTIONARIES ----------
+# ---------- LANGUAGE DICTIONARIES (renamed function to t() to avoid conflict) ----------
 text = {
     "en": {
         "login_title": "🔐 System Login",
@@ -173,7 +173,7 @@ text = {
     }
 }
 
-def _(key):
+def t(key):
     return text[st.session_state.lang].get(key, key)
 
 # ---------- INITIALISE MAINTENANCE REMINDERS (demo) ----------
@@ -271,48 +271,47 @@ st.markdown("""
 
 # ---------- LOGIN PAGE ----------
 if not st.session_state.authenticated:
-    st.markdown('<div class="main-header"><div class="rotating-symbol">⚡⚙️🔧</div><h1>{}</h1></div>'.format(_("login_title")), unsafe_allow_html=True)
-    password = st.text_input(_("login_password"), type="password")
-    if st.button(_("login_button")):
+    st.markdown('<div class="main-header"><div class="rotating-symbol">⚡⚙️🔧</div><h1>{}</h1></div>'.format(t("login_title")), unsafe_allow_html=True)
+    password = st.text_input(t("login_password"), type="password")
+    if st.button(t("login_button")):
         if password == "20082010":
             st.session_state.authenticated = True
             st.rerun()
         else:
-            st.error(_("login_error"))
+            st.error(t("login_error"))
     st.stop()
 
 # ---------- LOGGED IN – MAIN INTERFACE ----------
 lang_options = {"English": "en", "Français": "fr", "Español": "es"}
-selected_lang = st.sidebar.selectbox(_("language_selector"), list(lang_options.keys()))
+selected_lang = st.sidebar.selectbox(t("language_selector"), list(lang_options.keys()))
 st.session_state.lang = lang_options[selected_lang]
 
-# Navigation radio with non-empty label (hidden)
 page = st.sidebar.radio(
     "Navigation",
-    [_("nav_dashboard"), _("nav_scan"), _("nav_maintenance"), _("nav_report")],
+    [t("nav_dashboard"), t("nav_scan"), t("nav_maintenance"), t("nav_report")],
     label_visibility="hidden"
 )
 
 # ---------- SIDEBAR: GLOBE LOGO, CONTACT, PRICING ----------
 st.sidebar.markdown('<div class="sidebar-globe">🌐</div>', unsafe_allow_html=True)
-st.sidebar.markdown(f"## {_('company_name')}")
+st.sidebar.markdown(f"## {t('company_name')}")
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"### {_('sidebar_contact')}")
-st.sidebar.markdown(_("sidebar_email"))
-st.sidebar.markdown(_("sidebar_phone"))
+st.sidebar.markdown(f"### {t('sidebar_contact')}")
+st.sidebar.markdown(t("sidebar_email"))
+st.sidebar.markdown(t("sidebar_phone"))
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"### {_('sidebar_pricing_title')}")
-st.sidebar.markdown(_("sidebar_monthly"))
-st.sidebar.markdown(_("sidebar_full"))
-st.sidebar.caption(_("sidebar_note"))
+st.sidebar.markdown(f"### {t('sidebar_pricing_title')}")
+st.sidebar.markdown(t("sidebar_monthly"))
+st.sidebar.markdown(t("sidebar_full"))
+st.sidebar.caption(t("sidebar_note"))
 st.sidebar.markdown("---")
 
-if st.sidebar.button(_("logout_button"), width='stretch'):
+if st.sidebar.button(t("logout_button"), width='stretch'):
     st.session_state.authenticated = False
     st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"*{_('built_by')}*")
+st.sidebar.markdown(f"*{t('built_by')}*")
 
 # Helper functions
 def simulate_scan():
@@ -332,24 +331,27 @@ def simulate_scan():
         if not issues:
             issues.append("No issues")
             fix = "No action needed."
+        # Replace None with None (so that PyArrow doesn't complain)
+        latency_val = info["latency"] if info["latency"] is not None else None
         results.append({
             "Device": device,
             "Location": device.split("(")[-1].replace(")", "") if "(" in device else "Unknown",
             "Status": info["status"],
-            "Signal Strength (%)": info["signal_strength"] if info["signal_strength"] is not None else "N/A",
-            "Latency (ms)": info["latency"] if info["latency"] is not None else "N/A",
+            "Signal Strength (%)": info["signal_strength"] if info["signal_strength"] is not None else None,
+            "Latency (ms)": latency_val,
             "Issues": ", ".join(issues),
             "Fix Instruction": fix
         })
     return pd.DataFrame(results)
 
 # ---------- DASHBOARD ----------
-if page == _("nav_dashboard"):
-    st.markdown(f'<div class="main-header"><div class="rotating-symbol">⚡⚙️🔧</div><h1>{_("dashboard_title")}</h1></div>', unsafe_allow_html=True)
+if page == t("nav_dashboard"):
+    st.markdown(f'<div class="main-header"><div class="rotating-symbol">⚡⚙️🔧</div><h1>{t("dashboard_title")}</h1></div>', unsafe_allow_html=True)
     
     st.subheader("📡 Current Device Status")
     df_status = pd.DataFrame.from_dict(st.session_state.devices, orient="index").reset_index()
     df_status.rename(columns={"index": "Device"}, inplace=True)
+    # Convert None to something safe for display (but keep as None for PyArrow)
     st.dataframe(df_status[["Device", "status", "signal_strength", "latency", "last_check", "issues"]], use_container_width=True)
     
     col1, col2, col3 = st.columns(3)
@@ -365,10 +367,10 @@ if page == _("nav_dashboard"):
         st.metric("Active Issues", issues_count)
 
 # ---------- FULL SYSTEM SCAN ----------
-elif page == _("nav_scan"):
-    st.markdown(f'<div class="main-header"><h1>🔍 {_("nav_scan")}</h1></div>', unsafe_allow_html=True)
-    if st.button(_("scan_btn")):
-        with st.spinner(_("scanning")):
+elif page == t("nav_scan"):
+    st.markdown(f'<div class="main-header"><h1>🔍 {t("nav_scan")}</h1></div>', unsafe_allow_html=True)
+    if st.button(t("scan_btn")):
+        with st.spinner(t("scanning")):
             time.sleep(2)
             st.session_state.scan_results = simulate_scan()
         st.success("Scan complete!")
@@ -386,14 +388,14 @@ elif page == _("nav_scan"):
             st.success("✅ All devices are healthy!")
 
 # ---------- MAINTENANCE REMINDERS ----------
-elif page == _("nav_maintenance"):
-    st.markdown(f'<div class="main-header"><h1>🛠️ {_("nav_maintenance")}</h1></div>', unsafe_allow_html=True)
+elif page == t("nav_maintenance"):
+    st.markdown(f'<div class="main-header"><h1>🛠️ {t("nav_maintenance")}</h1></div>', unsafe_allow_html=True)
     
-    with st.expander(_("add_reminder")):
+    with st.expander(t("add_reminder")):
         with st.form("add_reminder_form"):
-            device_name = st.text_input(_("device_name"))
-            interval = st.number_input(_("interval_days"), min_value=1, value=30, step=1)
-            if st.form_submit_button(_("add_btn")):
+            device_name = st.text_input(t("device_name"))
+            interval = st.number_input(t("interval_days"), min_value=1, value=30, step=1)
+            if st.form_submit_button(t("add_btn")):
                 if device_name:
                     new_entry = {
                         "device": device_name,
@@ -404,7 +406,7 @@ elif page == _("nav_maintenance"):
                     st.session_state.maintenance_log.append(new_entry)
                     st.rerun()
     
-    st.subheader(_("existing_reminders"))
+    st.subheader(t("existing_reminders"))
     if st.session_state.maintenance_log:
         df_reminders = pd.DataFrame(st.session_state.maintenance_log)
         st.dataframe(df_reminders[["device", "last_maintenance", "interval_days", "next_due"]], use_container_width=True)
@@ -419,18 +421,18 @@ elif page == _("nav_maintenance"):
         st.info("No maintenance reminders set.")
 
 # ---------- DOWNLOAD REPORT ----------
-elif page == _("nav_report"):
-    st.markdown(f'<div class="main-header"><h1>📥 {_("nav_report")}</h1></div>', unsafe_allow_html=True)
-    st.write(_("report_title"))
+elif page == t("nav_report"):
+    st.markdown(f'<div class="main-header"><h1>📥 {t("nav_report")}</h1></div>', unsafe_allow_html=True)
+    st.write(t("report_title"))
     
-    if st.button(_("report_btn")):
+    if st.button(t("report_btn")):
         report_data = []
         for device, info in st.session_state.devices.items():
             report_data.append({
                 "Device": device,
                 "Status": info["status"],
-                "Signal Strength (%)": info["signal_strength"],
-                "Latency (ms)": info["latency"],
+                "Signal Strength (%)": info["signal_strength"] if info["signal_strength"] is not None else "",
+                "Latency (ms)": info["latency"] if info["latency"] is not None else "",
                 "Last Check": info["last_check"],
                 "Detected Issues": ", ".join(info["issues"]),
                 "Recommended Fix": "Check connectivity" if "Offline" in info["issues"] else ("Improve signal" if info.get("signal_strength", 100) < 60 else "No action needed")
@@ -453,10 +455,10 @@ elif page == _("nav_report"):
         )
         st.success("Report generated! Check your downloads folder.")
 
-# ---------- FOOTER (fixed to avoid TypeError) ----------
+# ---------- FOOTER (using t() function, no f-string conflict) ----------
 footer_html = f"""
 <div class="footer">
-    <p>© {datetime.now().year} – {_('built_by')}</p>
+    <p>© {datetime.now().year} – {t('built_by')}</p>
 </div>
 """
 st.markdown(footer_html, unsafe_allow_html=True)
